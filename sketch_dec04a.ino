@@ -2,6 +2,20 @@
 #include <LiquidCrystal_I2C.h>
 #include <Wire.h>
 #include <OneWire.h>
+
+class LCDInterface{
+public:
+  String PageName; // 16 symbols
+  int hourOn;  // 0 - 23
+  int hourOff; // 0 - 23
+  int minuteOn;  // 0 - 59
+  int minuteOff;  // 0 - 59
+  int Brightness; // 0 - 255 (parameter only in special page)
+  int Temperature; // 16 - 35 degree Celsius (parameter only in special page)
+  /* there will be more fields */
+};
+
+LCDInterface Interface[3];
 LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);
 iarduino_RTC t(RTC_DS1302,6,8,7);
 const int leftBtn = 2;
@@ -14,6 +28,19 @@ int MaxBright = 255;
 int NowBright;
 const int BrightnessPin = 9;
 void setup(){
+  
+  /* Name of pages */
+  Interface[0].PageName = "LCD Brightness";
+  Interface[1].PageName = "Temperature";
+  Interface[2].PageName = "Lighting";
+  /* standart values */
+  Interface[0].Brightness = 127;
+  Interface[1].Temperature = 25;
+  Interface[2].hourOn = 7;      ///////////////////////////////////
+  Interface[2].hourOff = 22;    //  light turns on at 7 o'clock  //
+  Interface[2].minuteOn = 0;    //  and turns off at 22 o'clock  //
+  Interface[2].minuteOff = 0;   ///////////////////////////////////
+  
   pinMode(leftBtn,INPUT);
   pinMode(rightBtn,INPUT);
   Serial.begin(9600);
