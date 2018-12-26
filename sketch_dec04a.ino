@@ -138,11 +138,14 @@ void loop(){
 
 
 void firstPage(){
-  lcd.clear();
-  lcd.setCursor(3,0);
-  lcd.print(t.gettime("d-m-Y"));
-  lcd.setCursor(3,1);
-  lcd.print(t.gettime("H:i D"));
+  if (atoi(t.gettime("i"))!= prevMin){
+    lcd.clear();
+    lcd.setCursor(3,0);
+    lcd.print(t.gettime("d-m-Y"));
+    lcd.setCursor(3,1);
+    lcd.print(t.gettime("H:i D"));
+  }
+  prevMin = atoi(t.gettime("i"));
 }
 void secondPage(int Night,int Day){
   bool flag = false;
