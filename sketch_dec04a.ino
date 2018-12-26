@@ -3,8 +3,9 @@
 #include <LiquidCrystal_I2C.h>
 #include <Wire.h>
 
+
 LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);
-iarduino_RTC t(RTC_DS1302,6,8,7);
+iarduino_RTC t(RTC_DS1302,6,8,7);  //RST, CLK, DAT
 const int leftBtn = 2;
 const int rightBtn = 3;
 const int upBtn = 4;
@@ -19,7 +20,7 @@ int MaxBright = 255;
 int prevMin;
 int NowBright;
 const int BrightnessPin = 9;
-SmartDelay waitTime(20000000UL);
+SmartDelay waitTime(60000000UL);
 
 int page;
 byte point[8] = {
@@ -85,7 +86,7 @@ void setup(){
 }
 void loop(){
   prevMin = atoi(t.gettime("i"));
-  if (page >= 3){
+  if (page > 3){
     page = 1;
   }
   if (page <= 0){
@@ -132,28 +133,23 @@ void loop(){
       break;
     }
   }
-  Serial.println(NightBright);
   delay(300);
 }
 
 
 void firstPage(){
-  if (atoi(t.gettime("i"))!= prevMin){
-    lcd.clear();
-    lcd.setCursor(3,0);
-    lcd.print(t.gettime("d-m-Y"));
-    lcd.setCursor(3,1);
-    lcd.print(t.gettime("H:i D"));
-  }
-  prevMin = atoi(t.gettime("i"));
+  lcd.clear();
+  lcd.setCursor(3,0);
+  lcd.print(t.gettime("d-m-Y"));
+  lcd.setCursor(3,1);
+  lcd.print(t.gettime("H:i D"));
+  delay(300);
 }
 void secondPage(int Night,int Day){
+  int Brightness;
   bool flag = false;
   int temp;
-  if (nightTime){
-    temp = (int)(Night/255*16);
-  }else temp = (int)(Day/255*16);
-  
+  int line = 0;
   int i;
   lcd.clear();
   lcd.setCursor(0,0);
@@ -162,45 +158,126 @@ void secondPage(int Night,int Day){
   lcd.write(byte(1));
   lcd.setCursor(0,1);
   lcd.print("options");
-  if (digitalRead(upBtn)==HIGH || digitalRead(downBtn)==HIGH){
-    lcd.clear();
-    lcd.setCursor(0,0);
-    lcd.print("Set brightness ");
-    lcd.write(byte(2));
-    i = 0;
-    Serial.println(temp);
+  if (digitalRead(okBtn)==HIGH){
     while(1){
-      if (i>=temp){
-        break;
-      }
-      lcd.setCursor(i,1);
-      lcd.write(byte(3));
-      Serial.print(1);
-      ++i;
-    }
-    i = 0;  
-    while(1){
-      if (( digitalRead(upBtn)==HIGH ) && ( i < 16 ) && nightTime){
-        lcd.setCursor(i,1);
-        lcd.write(byte(3));
-        ++i;
-      }
-      if (( digitalRead(upBtn)==HIGH ) && ( i < 16 ) && !nightTime){
-        lcd.setCursor(i,1);
-        lcd.write(byte(3));
-        ++i;
-      }
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.print("Day bright");
+      lcd.setCursor(15,line);
+      lcd.write(byte(1));
+      lcd.setCursor(0,1);
+      lcd.print("Night bright");
       delay(300);
-      if ((digitalRead(okBtn)==HIGH) && nightTime){         
-        NightBright = (int)(i/16*255);
-        Serial.println(NightBright);
-        break;
+      if (digitalRead(upBtn)==HIGH){
+         --line;
+         if (line<0){
+          line = 1;
+         }
       }
-      if ((digitalRead(okBtn)==HIGH) && !nightTime){
-        DayBright = round(i/16*255);
-        break;
+      if (digitalRead(downBtn)==HIGH){
+         ++line;
+         if (line>1){
+          line = 0;
+         }
       }
-    }
+      switch (line){
+        case 0:{
+          lcd.setCursor(15,1);
+          lcd.print(" ");
+          lcd.setCursor(15,line);
+          lcd.write(byte(1));
+          break;
+        }
+        case 1:{
+          lcd.setCursor(15,0);
+          lcd.print(" ");
+          lcd.setCursor(15,line);
+          lcd.write(byte(1));
+          break;
+        }
+      }
+      if (digitalRead(okBtn)==HIGH){
+        delay(300);
+        if (line == 0){  // top line in lcd
+          lcd.clear();
+          lcd.setCursor(0,0);
+          lcd.print("Set day bright ");
+          lcd.setCursor(15,0);
+          lcd.write(byte(2));
+          for (i = 0;i < round((16*Day)/255);i++){
+            lcd.setCursor(i,1);
+            lcd.write(byte(3));
+          }
+          analogWrite(BrightnessPin,round((i*255)/16));
+          while(1){
+            if (digitalRead(okBtn)==HIGH){
+              DayBright = round((i*255)/15);
+              break;
+            }
+            if (digitalRead(upBtn)==HIGH){
+              lcd.setCursor(i,1);
+              lcd.write(byte(3));
+              analogWrite(BrightnessPin,round((i*255)/16));
+              ++i;                       
+            }
+            if (digitalRead(downBtn)==HIGH){
+              --i;
+              lcd.setCursor(i,1);
+              lcd.write(" ");
+              analogWrite(BrightnessPin,round((i*255)/16));
+            }
+            if (i >= 16){
+              --i;
+            }
+            if (i < 0){
+              ++i;
+            }
+            delay(300);
+          }
+      }
+      if (line == 1){  // bottom line in lcd
+          lcd.clear();
+          lcd.setCursor(0,0);
+          lcd.print("Setnightbright ");
+          lcd.setCursor(15,0);
+          lcd.write(byte(2));
+          for (i = 0;i < round((16*Night)/255);i++){
+            lcd.setCursor(i,1);
+            lcd.write(byte(3));
+          }
+          analogWrite(BrightnessPin,round((i*255)/16));
+          while(1){
+            if (digitalRead(okBtn)==HIGH){
+              NightBright = round((i*255)/15);
+              break;
+            }
+            if (digitalRead(upBtn)==HIGH){
+              lcd.setCursor(i,1);
+              lcd.write(byte(3));
+              analogWrite(BrightnessPin,round((i*255)/16));
+              ++i;                       
+            }
+            if (digitalRead(downBtn)==HIGH){
+              --i;
+              lcd.setCursor(i,1);
+              lcd.write(" ");
+              analogWrite(BrightnessPin,round((i*255)/16));
+            }
+            if (i >= 16){
+              --i;
+            }
+            if (i < 0){
+              ++i;
+            }
+            delay(300);
+          }
+        }
+        delay(300);
+      }
+     if (digitalRead(rightBtn)==HIGH || digitalRead(leftBtn)==HIGH){
+      break; 
+     }
+    } 
   }
 }
 void thirdPage(){
@@ -211,4 +288,12 @@ void thirdPage(){
   lcd.write(byte(1));
   lcd.setCursor(0,1);
   lcd.print("options");
+  if (digitalRead(okBtn)==HIGH){
+    while(1){
+      delay(300);
+       if (digitalRead(okBtn)==HIGH){
+          break;
+       }
+    }
+  }
 }
