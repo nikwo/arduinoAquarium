@@ -14,9 +14,12 @@ const int okBtn = 11;
 unsigned int timer;
 unsigned int InterfaceTimer;
 bool brightness,nightTime;
-int NightBright = 5;
-int DayBright = 127;
-int MaxBright = 255;
+/*standart settings*/
+volatile int NightBright = 5;
+volatile int DayBright = 127;
+volatile int MaxBright = 255;
+volatile int Temperature = 24;
+
 int prevMin;
 int NowBright;
 const int BrightnessPin = 9;
@@ -289,11 +292,36 @@ void thirdPage(){
   lcd.setCursor(0,1);
   lcd.print("options");
   if (digitalRead(okBtn)==HIGH){
+    delay(100);
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("Set temperature");
+    lcd.setCursor(0,1);
+    lcd.print(temp);
     while(1){
-      delay(300);
-       if (digitalRead(okBtn)==HIGH){
-          break;
-       }
+      if (digitalRead(upBtn)==HIGH){
+        delay(200);
+        ++temp; 
+        if(temp>=35){
+          --temp;
+        }
+        lcd.setCursor(0,1);
+        lcd.write(temp);
+      }
+      if (digitalRead(upBtn)==HIGH){
+        delay(200);
+        --temp; 
+        if(temp<=20){
+          ++temp;
+        }
+        lcd.setCursor(0,1);
+        lcd.write(temp);
+      }
+      if (digitalRead(okBtn)==HIGH){
+        Temperature = temp;
+        delay(200);
+        break;
+     }
     }
   }
 }
