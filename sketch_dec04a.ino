@@ -300,28 +300,32 @@ void thirdPage(){
     lcd.print(temp);
     while(1){
       if (digitalRead(upBtn)==HIGH){
-        delay(200);
+        delay(300);
         ++temp; 
         if(temp>=35){
           --temp;
         }
         lcd.setCursor(0,1);
-        lcd.write(temp);
+        lcd.write("  ");
+        lcd.setCursor(0,1);
+        lcd.print(temp);
       }
-      if (digitalRead(upBtn)==HIGH){
-        delay(200);
+      if (digitalRead(downBtn)==HIGH){
+        delay(300);
         --temp; 
         if(temp<=20){
           ++temp;
         }
         lcd.setCursor(0,1);
-        lcd.write(temp);
+        lcd.write("  ");
+        lcd.setCursor(0,1);
+        lcd.print(temp);
       }
       if (digitalRead(okBtn)==HIGH){
         Temperature = temp;
-        delay(200);
+        delay(300);
         break;
-     }
+      }
     }
   }
 }
