@@ -8,7 +8,7 @@
 #define ONE_WIRE_BUS 10
 OneWire bus(ONE_WIRE_BUS);
 
-// Setup DallasTemperature to work on the OneWire bus
+
 DallasTemperature sensors(&bus);
 
 LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);
@@ -20,8 +20,8 @@ iarduino_RTC t(RTC_DS1302,6,8,7);  //RST, CLK, DAT
 #define downBtn  5
 #define okBtn  11
 
-#define Light 0
-#define Heater 1
+#define Light 15
+#define Heater 14
 
 
 bool HeatOn = false;
@@ -35,7 +35,7 @@ uint8_t DayBright = 127;
 uint8_t MaxBright = 255;
 uint8_t Temperature = 24;
 
-float temperature;
+int temperature;
 char temperatureString[6] = "-";
 
 int prevMin;
@@ -85,11 +85,11 @@ void secondPage(int , int );
 void thirdPage(int);
 void fourthPage();
 /* Time dependent procedures (feeder,heater,light,filter)*/
-void TurnHeaterOn();
-void TurnHeaterOff();
+void TurnHeaterOn(bool);
+void TurnHeaterOff(bool);
 
-void TurnLightOn(); 
-void TurnLightOff();
+void TurnLightOn(bool); 
+void TurnLightOff(bool);
 
 void TurnFilterOn();
 void TurnFilterOff();
@@ -97,8 +97,6 @@ void TurnFilterOff();
 void setup(){
   pinMode(Heater,OUTPUT);
   pinMode(Light,OUTPUT);
-  digitalWrite(Heater,LOW);
-  digitalWrite(Light,LOW);
   sensors.begin();
   pinMode(leftBtn,INPUT);
   pinMode(rightBtn,INPUT);
@@ -120,7 +118,8 @@ void setup(){
   lcd.print(t.gettime("H:i D"));
 }
 void loop(){
-  
+  TurnHeaterOn(HeatOn);
+  TurnHeaterOff(HeatOn);
   if (atoi(t.gettime("H")) >= 22 || atoi(t.gettime("H")) <= 7){
     nightTime = true; // true means that is a night now
   }
@@ -569,14 +568,12 @@ void secondPage(int Night,int Day){
 void thirdPage(int Temp){
   int temp = Temp;
   sensors.requestTemperatures();
-  temperature = sensors.getTempCByIndex(0);
+  temperature = (int)sensors.getTempCByIndex(0);
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print("Temperature: ");
   lcd.setCursor(13,0);
-  dtostrf(temperature, 2, 2, temperatureString);
-  lcd.print(temperatureString[0]);
-  lcd.print(temperatureString[1]);
+  lcd.print(temperature);
   lcd.setCursor(15,1);
   lcd.write(byte(1));
   lcd.setCursor(0,1);
@@ -619,5 +616,24 @@ void thirdPage(int Temp){
      }
      delay(300);
     }
+  }
+}
+
+void TurnHeaterOn(bool isOn){
+  sensors.requestTemperatures();
+  temperature = (int)sensors.getTempCByIndex(0);
+  delay(300);
+  if(temperature < Temperature && !isOn){
+    digitalWrite(Heater,HIGH);
+    HeatOn = true;
+  }
+}
+void TurnHeaterOff(bool isOn){
+  sensors.requestTemperatures();
+  temperature = (int)sensors.getTempCByIndex(0);
+  delay(300);
+  if(temperature >= Temperature && isOn){
+    digitalWrite(Heater,LOW);
+    HeatOn = false;
   }
 }
