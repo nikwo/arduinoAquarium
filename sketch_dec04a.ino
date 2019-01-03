@@ -1,5 +1,4 @@
 
-#include <SmartDelay.h>
 #include <iarduino_RTC.h>
 #include <LiquidCrystal_I2C.h>
 #include <Wire.h>
@@ -34,6 +33,8 @@ uint8_t NightBright = 5;
 uint8_t DayBright = 127;
 uint8_t MaxBright = 255;
 uint8_t Temperature = 24;
+char TimeLightOn[4] = {'0','7','0','0'};
+char TimeLightOff[4] = {'2','2','0','0'};
 
 int temperature;
 char temperatureString[6] = "-";
@@ -41,7 +42,7 @@ char temperatureString[6] = "-";
 int prevMin;
 int NowBright;
 const int BrightnessPin = 9;
-SmartDelay waitTime(300000UL);
+
 
 int page;
 byte point[8] = {
@@ -88,8 +89,8 @@ void fourthPage();
 void TurnHeaterOn(bool);
 void TurnHeaterOff(bool);
 
-void TurnLightOn(bool); 
-void TurnLightOff(bool);
+void TurnLightOn(); 
+void TurnLightOff();
 
 void TurnFilterOn();
 void TurnFilterOff();
@@ -118,6 +119,9 @@ void setup(){
   lcd.print(t.gettime("H:i D"));
 }
 void loop(){
+  sensors.requestTemperatures();
+  temperature = (int)sensors.getTempCByIndex(0);
+  
   TurnHeaterOn(HeatOn);
   TurnHeaterOff(HeatOn);
   if (atoi(t.gettime("H")) >= 22 || atoi(t.gettime("H")) <= 7){
@@ -567,8 +571,6 @@ void secondPage(int Night,int Day){
 }
 void thirdPage(int Temp){
   int temp = Temp;
-  sensors.requestTemperatures();
-  temperature = (int)sensors.getTempCByIndex(0);
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print("Temperature: ");
@@ -618,10 +620,20 @@ void thirdPage(int Temp){
     }
   }
 }
+void fourthPage(){
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Light On ");
+  lcd.print(TimeLightOn);
+  lcd.setCursor(0,1);
+  lcd.print("Light Off ");
+  lcd.print(TimeLightOff);
+  
+}
+
+
 
 void TurnHeaterOn(bool isOn){
-  sensors.requestTemperatures();
-  temperature = (int)sensors.getTempCByIndex(0);
   delay(300);
   if(temperature < Temperature && !isOn){
     digitalWrite(Heater,HIGH);
@@ -629,8 +641,6 @@ void TurnHeaterOn(bool isOn){
   }
 }
 void TurnHeaterOff(bool isOn){
-  sensors.requestTemperatures();
-  temperature = (int)sensors.getTempCByIndex(0);
   delay(300);
   if(temperature >= Temperature && isOn){
     digitalWrite(Heater,LOW);
