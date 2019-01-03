@@ -1,3 +1,4 @@
+
 #include <SmartDelay.h>
 #include <iarduino_RTC.h>
 #include <LiquidCrystal_I2C.h>
@@ -27,13 +28,12 @@ bool HeatOn = false;
 bool LightOn = false;
 
 unsigned int timer;
-unsigned int InterfaceTimer;
 bool brightness,nightTime;
 /*standart settings*/
-volatile int NightBright = 5;
-volatile int DayBright = 127;
-volatile int MaxBright = 255;
-volatile int Temperature = 24;
+uint8_t NightBright = 5;
+uint8_t DayBright = 127;
+uint8_t MaxBright = 255;
+uint8_t Temperature = 24;
 
 float temperature;
 char temperatureString[6] = "-";
@@ -109,7 +109,7 @@ void setup(){
   lcd.createChar(2,UpDown);
   lcd.createChar(3,ProgressLine);
   lcd.clear();
-  analogWrite(9,10);
+  analogWrite(BrightnessPin,10);
   brightness = false; //false - small brightness
   timer = 0;
   page = 1;
@@ -223,10 +223,12 @@ void firstPage(){
         lcd.clear();
         lcd.setCursor(0,0);
         lcd.print("Set year");
+        lcd.setCursor(15,0);
+        lcd.write(byte(2));
         lcd.setCursor(0,1);
-        volatile int Year = atoi(t.gettime("Y"));
-        volatile int Month = atoi(t.gettime("m"));
-        volatile int Day = atoi(t.gettime("d"));
+        int Year = atoi(t.gettime("Y"));
+        uint8_t Month = atoi(t.gettime("m"));
+        uint8_t Day = atoi(t.gettime("d"));
         lcd.print(Year);
         delay(300);
         while (1){
@@ -259,6 +261,8 @@ void firstPage(){
         lcd.clear();
         lcd.setCursor(0,0);
         lcd.print("Set month");
+        lcd.setCursor(15,0);
+        lcd.write(byte(2));
         lcd.setCursor(0,1);
         lcd.print(Month);
         delay(300);
@@ -291,6 +295,8 @@ void firstPage(){
           lcd.clear();
           lcd.setCursor(0,0);
           lcd.print("Set day");
+          lcd.setCursor(15,0);
+          lcd.write(byte(2));
           lcd.setCursor(0,1);
           lcd.print(Day);
           delay(300);
@@ -350,11 +356,79 @@ void firstPage(){
           }
         }
         if (line == 1){
+          lcd.clear();
+          lcd.setCursor(0,0);
+          lcd.print("Set hour");
+          lcd.setCursor(15,0);
+          lcd.write(byte(2));
+          uint8_t Hour = atoi(t.gettime("H"));
+          uint8_t Minutes = atoi(t.gettime("i"));
+          lcd.setCursor(0,1);
+          lcd.print(Hour);
+          delay(300);
+          while(1){
+            if (digitalRead(upBtn)==HIGH){
+              ++Hour;
+              if(Hour>23){
+                --Hour;
+              }
+              lcd.setCursor(0,1);
+              lcd.write("  ");
+              lcd.setCursor(0,1);
+              lcd.print(Hour);
+            }
+            if (digitalRead(downBtn)==HIGH){
+              --Hour;
+              if(Hour<1){
+                ++Hour;
+              }
+              lcd.setCursor(0,1);
+              lcd.write("  ");
+              lcd.setCursor(0,1);
+              lcd.print(Hour);
+            }
+            if (digitalRead(okBtn)==HIGH){
+              break;
+            }
+            delay(300);
+        }
         lcd.clear();
         lcd.setCursor(0,0);
-        lcd.print("Set hour");  
-        }   
-      } 
+        lcd.print("Set minutes");
+        lcd.setCursor(15,0);
+        lcd.write(byte(2));
+        lcd.setCursor(0,1);
+        lcd.print(Minutes);
+        delay(300);
+        while(1){
+          if (digitalRead(upBtn)==HIGH){
+              ++Minutes;
+              if(Minutes>23){
+                --Minutes;
+              }
+              lcd.setCursor(0,1);
+              lcd.write("  ");
+              lcd.setCursor(0,1);
+              lcd.print(Minutes);
+            }
+            if (digitalRead(downBtn)==HIGH){
+              --Minutes;
+              if(Minutes<1){
+                ++Minutes;
+              }
+              lcd.setCursor(0,1);
+              lcd.write("  ");
+              lcd.setCursor(0,1);
+              lcd.print(Minutes);
+            }
+            if (digitalRead(okBtn)==HIGH){
+              t.settime(-1,Minutes,Hour,-1,-1,-1);
+              break;
+            }
+            delay(300);
+        }
+      }   
+    } 
   }
 }
 void secondPage(int Night,int Day){
