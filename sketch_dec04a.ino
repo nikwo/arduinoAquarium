@@ -474,7 +474,7 @@ void firstPage()
                     if (digitalRead(downBtn) == HIGH)
                     {
                         --Minutes;
-                        if (Minutes < 0
+                        if (Minutes < 0)
                         {
                             ++Minutes;
                         }
