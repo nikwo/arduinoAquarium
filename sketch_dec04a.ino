@@ -79,8 +79,8 @@ void secondPage(int, int);
 void thirdPage(int);
 void fourthPage();
 /* Time dependent procedures (feeder,heater,light,filter)*/
-void TurnHeaterOn(bool);
-void TurnHeaterOff(bool);
+void TurnHeaterOn(int, int);
+void TurnHeaterOff(int, int);
 
 void TurnLightOn();
 void TurnLightOff();
@@ -117,8 +117,7 @@ void loop()
     sensors.requestTemperatures();
     temperature = (int)sensors.getTempCByIndex(0);
 
-    TurnHeaterOn(HeatOn);
-    TurnHeaterOff(HeatOn);
+    
     if (atoi(t.gettime("H")) >= 22 || atoi(t.gettime("H")) <= 7)
     {
         nightTime = true; // true means that is a night now
@@ -183,6 +182,8 @@ void loop()
     }
     }
     delay(300);
+    TurnHeaterOn(temperature, Temperature);
+    TurnHeaterOff(temperature, Temperature);
 }
 
 void firstPage()
@@ -197,10 +198,10 @@ void firstPage()
     if (digitalRead(okBtn) == HIGH)
     {
         lcd.setCursor(15, 0);
-        lcd.write(byte(1));
+        lcd.write(byte(1));            
+        delay(300);
         while (1)
         {
-            delay(300);
             if (digitalRead(upBtn) == HIGH)
             {
                 --line;
@@ -378,11 +379,11 @@ void firstPage()
                             }
                             break;
                         }
-                            lcd.setCursor(0, 1);
-                            lcd.write("  ");
-                            lcd.setCursor(0, 1);
-                            lcd.print(Day);
-                        }
+                        }    
+                        lcd.setCursor(0, 1);
+                        lcd.write("  ");
+                        lcd.setCursor(0, 1);
+                        lcd.print(Day);
                     }
                     if (digitalRead(downBtn) == HIGH)
                     {
@@ -433,7 +434,7 @@ void firstPage()
                     if (digitalRead(downBtn) == HIGH)
                     {
                         --Hour;
-                        if (Hour < 1)
+                        if (Hour < 0)
                         {
                             ++Hour;
                         }
@@ -461,7 +462,7 @@ void firstPage()
                     if (digitalRead(upBtn) == HIGH)
                     {
                         ++Minutes;
-                        if (Minutes > 23)
+                        if (Minutes > 59)
                         {
                             --Minutes;
                         }
@@ -473,7 +474,7 @@ void firstPage()
                     if (digitalRead(downBtn) == HIGH)
                     {
                         --Minutes;
-                        if (Minutes < 1)
+                        if (Minutes < 0
                         {
                             ++Minutes;
                         }
@@ -727,21 +728,13 @@ void fourthPage()
     lcd.print(TimeLightOff);
 }
 
-void TurnHeaterOn(bool isOn)
-{
-    delay(300);
-    if (temperature < Temperature && !isOn)
-    {
-        digitalWrite(Heater, HIGH);
-        HeatOn = true;
+void TurnHeaterOn( int Temp, int nowTemp){
+    if(nowTemp < Temp){
+      digitalWrite( Heater, HIGH);
     }
 }
-void TurnHeaterOff(bool isOn)
-{
-    delay(300);
-    if (temperature >= Temperature && isOn)
-    {
-        digitalWrite(Heater, LOW);
-        HeatOn = false;
+void TurnHeaterOff( int Temp, int nowTemp){
+    if(nowTemp > Temp){
+      digitalWrite( Heater, LOW);
     }
 }
