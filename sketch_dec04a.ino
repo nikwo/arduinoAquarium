@@ -1,6 +1,6 @@
 
-#include <iarduino_RTC.h>
 #include <LiquidCrystal_I2C.h>
+#include <iarduino_RTC.h>
 #include <Wire.h>
 #include <DallasTemperature.h>
 
@@ -20,19 +20,22 @@ iarduino_RTC t(RTC_DS1302, 6, 8, 7); //RST, CLK, DAT
 
 #define Light 15
 #define Heater 14
-
-bool HeatOn = false;
-bool LightOn = false;
+#define Filter 17
 
 unsigned int timer;
 bool brightness, nightTime;
 /*standart settings*/
-uint8_t NightBright = 5;
-uint8_t DayBright = 127;
-uint8_t MaxBright = 255;
-uint8_t Temperature = 24;
-char TimeLightOn[4] = {'0', '7', '0', '0'};
-char TimeLightOff[4] = {'2', '2', '0', '0'};
+int8_t NightBright = 5;
+int8_t DayBright = 127;
+int8_t MaxBright = 255;
+int8_t Temperature = 24;
+
+uint8_t HourLOn = 7;
+uint8_t MinuteLOn = 0;
+uint8_t HourLOff = 22;
+uint8_t MinuteLOff = 0;
+
+bool FilterIsOn = true;
 
 int temperature;
 char temperatureString[6] = "-";
@@ -77,21 +80,22 @@ byte ProgressLine[8] =
 void firstPage();
 void secondPage(int, int);
 void thirdPage(int);
-void fourthPage();
+void fourthPage(int8_t &, int8_t &, int8_t &, int8_t &);
+void fifthPage(bool &);
 /* Time dependent procedures (feeder,heater,light,filter)*/
 void TurnHeaterOn(int, int);
 void TurnHeaterOff(int, int);
 
-void TurnLightOn();
-void TurnLightOff();
+void TurnLightOn(int8_t, int8_t);
+void TurnLightOff(int8_t, int8_t);
 
-void TurnFilterOn();
-void TurnFilterOff();
+void FilterControl(bool);
 
 void setup()
 {
     pinMode(Heater, OUTPUT);
     pinMode(Light, OUTPUT);
+    pinMode(Filter, OUTPUT);
     sensors.begin();
     pinMode(leftBtn, INPUT);
     pinMode(rightBtn, INPUT);
@@ -154,13 +158,13 @@ void loop()
         --page;
     }
 
-    if (page > 3)
+    if (page > 5)
     {
         page = 1;
     }
     if (page <= 0)
     {
-        page = 3;
+        page = 5;
     }
 
     switch (page)
@@ -180,15 +184,28 @@ void loop()
         thirdPage(Temperature);
         break;
     }
+    case 4:
+    {
+        fourthPage(HourLOn, MinuteLOn, HourLOff, MinuteLOff);
+        break;
     }
+    case 5:
+    {
+        fifthPage(FilterIsOn);
+        break;
+    }
+    }  
     delay(300);
     TurnHeaterOn(temperature, Temperature);
     TurnHeaterOff(temperature, Temperature);
+    TurnLightOn(atoi(t.gettime("H")), atoi(t.gettime("i")), HourLOn, MinuteLOn, HourLOff, MinuteLOff);
+    TurnLightOff(atoi(t.gettime("H")), atoi(t.gettime("i")), HourLOn, MinuteLOn, HourLOff, MinuteLOff);
+    FilterControl(FilterIsOn);
 }
 
 void firstPage()
 {
-    int line = 0;
+    int8_t line = 0;
     lcd.clear();
     lcd.setCursor(3, 0);
     lcd.print(t.gettime("d-m-Y"));
@@ -412,8 +429,8 @@ void firstPage()
                 lcd.print("Set hour");
                 lcd.setCursor(15, 0);
                 lcd.write(byte(2));
-                uint8_t Hour = atoi(t.gettime("H"));
-                uint8_t Minutes = atoi(t.gettime("i"));
+                int8_t Hour = atoi(t.gettime("H"));
+                int8_t Minutes = atoi(t.gettime("i"));
                 lcd.setCursor(0, 1);
                 lcd.print(Hour);
                 delay(300);
@@ -499,7 +516,7 @@ void secondPage(int Night, int Day)
     int Brightness;
     bool flag = false;
     int temp;
-    int line = 0;
+    short line = 0;
     int i;
     lcd.clear();
     lcd.setCursor(0, 0);
@@ -717,24 +734,310 @@ void thirdPage(int Temp)
         }
     }
 }
-void fourthPage()
+void fourthPage(uint8_t &LH_On, uint8_t &LM_On, uint8_t &LH_Off, uint8_t &LM_Off)
 {
     lcd.clear();
     lcd.setCursor(0, 0);
-    lcd.print("Light On ");
-    lcd.print(TimeLightOn);
+    lcd.print("Light");
     lcd.setCursor(0, 1);
-    lcd.print("Light Off ");
-    lcd.print(TimeLightOff);
+    lcd.print("options");
+    if(digitalRead(okBtn)==HIGH){
+        short line = 0;
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        if(LH_On < 10){
+            lcd.print("Time On: 0");
+        }else lcd.print("Time On: ");
+        lcd.print(LH_On);
+        lcd.print(":");
+        if(LM_On < 10){
+            lcd.print("0");
+            lcd.print(LM_On);
+        }else lcd.print(LM_On);
+        lcd.setCursor(0, 1);
+        if(LH_Off < 10){
+            lcd.print("Time Off: 0");
+        }else lcd.print("Time Off: ");
+        lcd.print(LH_Off);
+        lcd.print(":");
+        if(LM_Off < 10){
+            lcd.print("0");
+            lcd.print(LM_Off);
+        }else lcd.print(LM_Off);
+        delay(300);
+        while(1){
+            lcd.setCursor(15, line);
+            lcd.write(byte(1));
+            if (digitalRead(downBtn) == HIGH)
+            {
+                --line;
+                if (line < 0)
+                {
+                    line = 1;
+                }
+            }
+            if (digitalRead(upBtn) == HIGH)
+            {
+                ++line;
+                if (line > 1)
+                {
+                    line = 0;
+                }
+            }
+            switch (line)
+            {
+            case 0:
+            {
+                lcd.setCursor(15, 1);
+                lcd.print(" ");
+                lcd.setCursor(15, line);
+                lcd.write(byte(1));
+                break;
+            }
+            case 1:
+            {
+                lcd.setCursor(15, 0);
+                lcd.print(" ");
+                lcd.setCursor(15, line);
+                lcd.write(byte(1));
+                break;
+            }
+            }
+            if(digitalRead(okBtn) == HIGH){
+                break;
+            }
+            delay(300);
+        }
+        if(line == 0){
+            lcd.clear();
+            lcd.setCursor(0, 0);
+            lcd.print("Hour Light On");
+            lcd.setCursor(15, 0);
+            lcd.write(byte(2));
+            int8_t Hour = LH_On;
+            int8_t Minutes = LM_On;
+            lcd.setCursor(0, 1);
+            lcd.print(Hour);
+            delay(300);
+            while (1)
+            {
+                if (digitalRead(upBtn) == HIGH)
+                {
+                    ++Hour;
+                    if (Hour > 23)
+                    {
+                        --Hour;
+                    }
+                    lcd.setCursor(0, 1);
+                    lcd.write("  ");
+                    lcd.setCursor(0, 1);
+                    lcd.print(Hour);
+                }
+                if (digitalRead(downBtn) == HIGH)
+                {
+                     --Hour;
+                     if (Hour < 0)
+                     {
+                         Hour = 0;
+                     }
+                     lcd.setCursor(0, 1);
+                     lcd.write("  ");
+                     lcd.setCursor(0, 1);
+                     lcd.print(Hour);
+                }
+                if (digitalRead(okBtn) == HIGH)
+                {
+                    break;
+                }
+                delay(300);
+            }
+            lcd.clear();
+            lcd.setCursor(0, 0);
+            lcd.print("Set minutes");
+            lcd.setCursor(15, 0);
+            lcd.write(byte(2));
+            lcd.setCursor(0, 1);
+            lcd.print(Minutes);
+            delay(300);
+            while (1)
+            {
+                if (digitalRead(upBtn) == HIGH)
+                {
+                    ++Minutes;
+                    if (Minutes > 59)
+                    {
+                        --Minutes;
+                    }
+                    lcd.setCursor(0, 1);
+                    lcd.write("  ");
+                    lcd.setCursor(0, 1);
+                    lcd.print(Minutes);
+                }
+                if (digitalRead(downBtn) == HIGH)
+                {
+                    --Minutes;
+                    if (Minutes < 0)
+                    {
+                        Minutes = 0;
+                    }
+                    lcd.setCursor(0, 1);
+                    lcd.write("  ");
+                    lcd.setCursor(0, 1);
+                    lcd.print(Minutes);
+                }
+                if (digitalRead(okBtn) == HIGH)
+                {
+                    LH_On = Hour;
+                    LM_On = Minutes;
+                    break;
+                }
+                delay(300);
+            }
+        }
+        if(line == 1){
+            lcd.clear();
+            lcd.setCursor(0, 0);
+            lcd.print("Hour Light Off");
+            lcd.setCursor(15, 0);
+            lcd.write(byte(2));
+            int8_t Hour = LH_Off;
+            int8_t Minutes = LM_Off;
+            lcd.setCursor(0, 1);
+            lcd.print(Hour);
+            delay(300);
+            while (1)
+            {
+                if (digitalRead(upBtn) == HIGH)
+                {
+                    ++Hour;
+                    if (Hour > 23)
+                    {
+                        --Hour;
+                    }
+                    lcd.setCursor(0, 1);
+                    lcd.write("  ");
+                    lcd.setCursor(0, 1);
+                    lcd.print(Hour);
+                }
+                if (digitalRead(downBtn) == HIGH)
+                {
+                     --Hour;
+                     if (Hour < 0)
+                     {
+                         Hour = 0;
+                     }
+                     lcd.setCursor(0, 1);
+                     lcd.write("  ");
+                     lcd.setCursor(0, 1);
+                     lcd.print(Hour);
+                }
+                if (digitalRead(okBtn) == HIGH)
+                {
+                    break;
+                }
+                delay(300);
+            }
+            lcd.clear();
+            lcd.setCursor(0, 0);
+            lcd.print("Set minutes");
+            lcd.setCursor(15, 0);
+            lcd.write(byte(2));
+            lcd.setCursor(0, 1);
+            lcd.print(Minutes);
+            delay(300);
+            while (1)
+            {
+                if (digitalRead(upBtn) == HIGH)
+                {
+                    ++Minutes;
+                    if (Minutes > 59)
+                    {
+                        --Minutes;
+                    }
+                    lcd.setCursor(0, 1);
+                    lcd.write("  ");
+                    lcd.setCursor(0, 1);
+                    lcd.print(Minutes);
+                }
+                if (digitalRead(downBtn) == HIGH)
+                {
+                    --Minutes;
+                    if (Minutes < 0)
+                    {
+                        Minutes = 0;
+                    }
+                    lcd.setCursor(0, 1);
+                    lcd.write("  ");
+                    lcd.setCursor(0, 1);
+                    lcd.print(Minutes);
+                }
+                if (digitalRead(okBtn) == HIGH)
+                {
+                    LH_Off = Hour;
+                    LM_Off = Minutes;
+                    break;
+                }
+                delay(300);
+            }
+        }
+    }
+    
+}
+void fifthPage(bool &flag){
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("Filter");
+    lcd.setCursor(0,1);
+    if(flag){
+        lcd.print("NOW IS ON");
+    }else lcd.print("NOW IS OFF");
+    if (digitalRead(okBtn) == HIGH){
+        flag = !flag;
+    }
 }
 
 void TurnHeaterOn( int Temp, int nowTemp){
     if(nowTemp < Temp){
-      digitalWrite( Heater, HIGH);
+        analogWrite( Heater, 255);
     }
 }
 void TurnHeaterOff( int Temp, int nowTemp){
     if(nowTemp > Temp){
-      digitalWrite( Heater, LOW);
+        analogWrite( Heater, 0);
+    }
+}
+void TurnLightOn(int8_t HOUR, int8_t MINUTE, int8_t HON, int8_t MINON, int8_t HOFF, int8_t MINOFF){
+    if(HOUR >= HON && HOUR < HOFF){
+        if(MINUTE >= MINON && HOUR == HON){
+            analogWrite(Light, 0);
+        }
+        if(HOUR >= HON){
+            analogWrite(Light, 0);
+        }
+    }
+}
+void TurnLightOff(int8_t HOUR, int8_t MINUTE, int8_t HON, int8_t MINON, int8_t HOFF, int8_t MINOFF){
+    if(HOUR == HOFF){
+        if(MINUTE >= MINOFF){
+            analogWrite(Light, 255);
+        }
+    }
+    if(HOUR > HOFF){
+        analogWrite(Light, 255);
+    }
+}
+void FilterControl(bool flag){
+    Serial.print(flag);
+    switch(flag){
+        case true:
+        {
+            digitalWrite(Filter, LOW);
+            break;
+        }
+        case false:
+        {
+            digitalWrite(Filter, HIGH);
+            break;
+        }
     }
 }
